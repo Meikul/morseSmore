@@ -1,19 +1,21 @@
 window.addEventListener('load', initDom)
 window.addEventListener('keyup', initAudio, {once: true})
 
-let audioInited = false
-
 const dahThreshold = 120
-const symbolGap = 240
-const wordGap = 700
+const symbolGap = 210
+const wordGap = 800
 
-const maxGain = 0.5
+const maxGain = 0.35
 const freq = 700
 const fadeTime = 0.0015
 
+const state = {
+  curContent: null,
+  audioInited: false,
+}
 
 function initAudio() {
-  audioInited = true
+  state.audioInited = true
   const AudioContext = window.AudioContext || window.webkitAudioContext
 
   const aContext = new AudioContext()
@@ -35,15 +37,16 @@ function initAudio() {
   let beepStart = 0
   let beepEnd = 0
 
-  let timeout
+  let curTimeout = null
 
   document.addEventListener('keydown', e => {
     if (!isPlaying) {
       if (e.key === 'Enter') {
         interpret(inputRecord)
         inputRecord = []
+        addNewLine()
       } else if (/^[A-Za-z ]$/.test(e.key)) {
-        clearTimeout(timeout)
+        clearTimeout(curTimeout)
         keyDown(e)
       }
     }
@@ -55,7 +58,7 @@ function initAudio() {
       inputRecord.push((beepEnd - beepStart))
       isPlaying = false
       gainNode.gain.setTargetAtTime(0, aContext.currentTime, fadeTime)
-      timeout = setTimeout((oldRecordLength) => {
+      curTimeout = setTimeout((oldRecordLength) => {
         if(inputRecord.length === oldRecordLength){
           onNewLetter(inputRecord)
         }
@@ -76,10 +79,19 @@ function initAudio() {
 
 function onNewLetter(inputs) {
   const translation = translateInputs(inputs)
-  document.getElementById('content').innerText = translation
+  state.curContent.innerText = translation
 }
 
 function initDom() {
+  addNewLine()
+}
+
+function addNewLine() {
+  const lines = document.getElementById('lines')
+  const newLine = document.createElement('p')
+  newLine.classList.add('contentLine')
+  lines.appendChild(newLine)
+  state.curContent = newLine
 }
 
 function morseToSym(symbol) {
@@ -127,6 +139,7 @@ function morseToSym(symbol) {
     '1,0,0,1,0': '/',
     '1,0,0,0,0,1': '-',
     '1,0,0,0,1': '=',
+    '0,1,1,1,1,0': '\'',
     '1,0,1,0,1,1': '!',
     '0,1,0,0,0': '&',
     '0,0,0,1,0,0,1': '$',
