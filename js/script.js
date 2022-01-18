@@ -1,5 +1,6 @@
 window.addEventListener('load', initDom)
 window.addEventListener('keyup', initAudio, {once: true})
+window.addEventListener('touchend', initAudio, {once: true})
 
 const dahThreshold = 120
 const symbolGap = 210
@@ -15,6 +16,10 @@ const state = {
 }
 
 function initAudio() {
+  if (state.audioInited){
+    return
+  }
+
   state.audioInited = true
   const AudioContext = window.AudioContext || window.webkitAudioContext
 
@@ -39,21 +44,28 @@ function initAudio() {
 
   let curTimeout = null
 
-  document.addEventListener('keydown', e => {
+  document.addEventListener('touchstart', interactionStart)
+  document.addEventListener('touchend', interactionEnd)
+
+  document.addEventListener('keydown', interactionStart)
+  document.addEventListener('keyup', interactionEnd)
+
+  function interactionStart(e) {
+    console.log(e.type);
     if (!isPlaying) {
       if (e.key === 'Enter') {
         interpret(inputRecord)
         inputRecord = []
         addNewLine()
-      } else if (/^[A-Za-z ]$/.test(e.key)) {
+      } else if (e.type === 'touchstart' || /^[A-Za-z ]$/.test(e.key)) {
         clearTimeout(curTimeout)
-        keyDown(e)
+        startBeep(e)
       }
     }
-  })
+  }
 
-  document.addEventListener('keyup', e => {
-    if (e.key === playingKey) {
+  function interactionEnd(e) {
+    if ((e.type === 'touchend' && playingKey === 'touchstart') || e.key === playingKey) {
       beepEnd = Date.now()
       inputRecord.push((beepEnd - beepStart))
       isPlaying = false
@@ -64,14 +76,18 @@ function initAudio() {
         }
       }, symbolGap, inputRecord.length)
     }
-  })
+  }
 
-  function keyDown(e) {
+  function startBeep(e) {
     beepStart = Date.now()
     if (inputRecord.length > 0){
       inputRecord.push((beepEnd - beepStart))
     }
-    playingKey = e.key
+    if (e.type === 'touchstart') {
+      playingKey = e.type
+    } else {
+      playingKey = e.key
+    }
     isPlaying = true
     gainNode.gain.setTargetAtTime(maxGain, aContext.currentTime, fadeTime)
   }
